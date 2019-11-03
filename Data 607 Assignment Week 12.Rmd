@@ -1,0 +1,176 @@
+---
+title: "Data 607 Assignment Week 12"
+author: "Ajay Arora"
+date: "November 2, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+Reference: https://creativedata.atlassian.net/wiki/spaces/SAP/pages/53411843/R+-+Read+Write+files+from+MongoDB
+
+Reference: https://stackoverflow.com/questions/12402184/rmongo-and-query-ing
+
+Reference: https://cran.r-project.org/src/contrib/Archive/RMongo/
+
+Reference: https://datascienceplus.com/using-mongodb-with-r/
+
+Reference: https://github.com/tc/RMongo/blob/master/man/dbRemoveQuery-methods.Rd
+
+Reference: https://www.bmc.com/blogs/sql-vs-nosql/
+
+Reference: https://bitnine.net/blog-computing/sql-vs-nosql-comparative-advantages-and-disadvantages/
+
+Reference: https://medium.com/@zhenwu93/relational-vs-non-relational-databases-8336870da8bc
+
+
+
+
+```{r}
+library(DBI)
+
+```
+
+###Note: I used the data from Project 3 to convert to NoSQL database.  The relational data resides on AWS.
+
+```{r}
+cn <- dbConnect(drv      = RMySQL::MySQL(), 
+                username = "admin", 
+                password = "Data__607", 
+                host     = "database-1.cxdov2mcmzlo.us-east-2.rds.amazonaws.com", 
+                port     = 3306, 
+                dbname   = "data607project3")
+
+
+data <- dbGetQuery(cn, "SELECT * FROM softwareskills")
+
+data2C <- dbGetQuery(cn, "SELECT * FROM computingskills")
+
+data3E<- dbGetQuery(cn, "SELECT * FROM educationlevels")
+```
+
+###Load the relational data into NoSQL
+```{r}
+library(RMongo)
+library(jsonlite)
+library(stringr)
+
+#Connection to  mongodb 
+mongodb <- mongoDbConnect("skills", host = "localhost", port = 27017)
+
+#Remove any existing collections
+dbRemoveQuery(mongodb, 'softwareskills', '{ }')
+dbRemoveQuery(mongodb, 'computingskills', '{ }')
+dbRemoveQuery(mongodb, 'educationlevels', '{ }')
+
+
+#Function to insert data into mongodb
+mongodb_insert <- function(connection, db, df)
+  {
+  
+  #make json mongodb document
+  mongodata <- toJSON(df)
+  mongodata <- sub("[","",mongodata, fixed = TRUE)
+  mongodata <- sub("]","",mongodata, fixed = TRUE)
+  mongodata <- as.character(mongodata)
+  dbInsertDocument(connection, db, mongodata)
+}
+
+for(i in 1:nrow(data)) 
+  {
+  mongodb_insert(mongodb,"softwareskills",data[i,])
+}
+
+for(i in 1:nrow(data2C)) 
+  {
+  mongodb_insert(mongodb,"computingskills",data2C[i,])
+}
+
+for(i in 1:nrow(data3E)) 
+  {
+  mongodb_insert(mongodb,"educationlevels",data3E[i,])
+}
+
+
+
+
+```
+
+###Read the data from NoSQL
+```{r}
+library(kableExtra)
+#library(mongolite)
+
+mongo <- mongoDbConnect("skills", "localhost", 27017)
+
+kable(dbGetQuery(mongo, "softwareskills","{}")) #Get all the records 
+
+```
+
+###Read the data from NoSQL
+```{r}
+library(kableExtra)
+#library(mongolite)
+
+mongo <- mongoDbConnect("skills", "localhost", 27017)
+
+kable(dbGetQuery(mongo, "computingskills","{}")) #Get all the records 
+
+```
+
+###Read the data from NoSQL
+```{r}
+library(kableExtra)
+#library(mongolite)
+
+mongo <- mongoDbConnect("skills", "localhost", 27017)
+
+kable(dbGetQuery(mongo, "educationlevels","{}")) #Get all the records 
+
+```
+###What are some of the advantages and disadvantages between SQL and NoSQL?
+
+What is SQL?
+
+SQL (Structured Query Language) is a programming language that is used to manage data in relational databases. Relational databases use relations (typically called tables) to store data and then match that data by using common characteristics within the dataset. Some common relational database management systems that use SQL are Oracle, Sybase, Microsoft SQL Server, Access, and Ingres.
+Cobb's breakthrough paper describes a database where objects could be constructed and queried using something he called SQL, structured query language. He used SQL to create both data (in objects called tables) and the schema for that data, which describes fields in columns. A single record in a SQL database is called a row.
+
+What is NoSQL?
+
+A NoSQL database, on the other hand, is self-describing, so does not require a schema. Nor does it enforce relations between tables in all cases. All its documents are JSON documents, which are complete entities that one can readily read and understand. NoSQL refers to high-performance, non-relational databases that utilize a wide variety of data models. These databases are highly recognized for their ease-of-use, scalable performance, strong resilience, and wide availability. NoSQL database examples include MongoDB, MarkLogic, Couchbase, CloudDB, and Amazon's Dynamo DB.
+
+Major Differences
+
+There are many differences between SQL and NoSQL, all of which are important to understand when making a decision about what might be the best data management system for your organization. These include differences in:
+
+Language
+
+Scalability
+
+Community
+
+Structure
+
+The Language
+
+One of the major differences between SQL relational and NoSQL non-relational databases is the language. As mentioned, SQL databases use Structured Query Language for defining and manipulating data. This allows SQL to be extremely versatile and widely-used - however, it also makes it more restrictive. SQL requires that you use predefined schemas to determine the structure of your data before you even begin to work with it. Your data must also follow the same structure as well, which can entail significant upfront preparation along with careful execution.
+
+A NoSQL database features a dynamic schema for unstructured data and the data can be stored in many different ways, whether it be graph-based, document-oriented, column-oriented, or organized as a KeyValue store. This extreme flexibility allows you to create documents without first having to carefully plan and define their structure, add fields as you go, and vary the syntax from database to database. It also allows you to give each document its own unique structure, providing you with more freedom overall.
+
+The Scalability
+
+Another big difference between SQL and NoSQL is their scalability. In most SQL databases, they are vertically scalable, which means that you can increase the load on a single server by increasing components like RAM, SSD, or CPU. In contrast, NoSQL databases are horizontally scalable, which means that they can handle increased traffic simply by adding more servers to the database. NoSQL databases have the ability to become larger and much more powerful, making them the preferred choice for large or constantly evolving data sets.
+
+The Community
+
+Due to SQL's maturity, it has a much stronger and more developed community compared to NoSQL. There are thousands of chats and forums available where experts can share knowledge and discuss SQL best practices, continuously enhancing skills. Although NoSQL is growing rapidly, its community is not as well defined as SQL due to the fact that it is still relatively new.
+
+The Structure
+
+Finally, a last thing to consider when debating SQL versus NoSQL is their structures. SQL databases are table-based which makes them a better option for applications that require multi-row transactions. Samples of these may be accounting systems or even legacy systems that were originally built for a relational structure. NoSQL databases can be key-value pairs, wide-column stores, graph databases, or document-based.
+
+
